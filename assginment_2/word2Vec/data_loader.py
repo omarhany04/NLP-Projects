@@ -3,12 +3,11 @@ from datasets import load_dataset
 
 def load_conll2003():
     dataset = load_dataset("lhoestq/conll2003")
-
-    sentences = []
+    texts = []
 
     for split in ["train", "validation", "test"]:
-        for example in dataset[split]:
-            tokens = example["tokens"]
-            sentences.append(tokens)
+        for sentence in dataset[split]:
+            tokens = sentence["tokens"]
+            texts.append(tokens)
 
-    return sentences
+    return texts
