@@ -20,8 +20,11 @@ def create_skipgram_pairs(tokenized_sentences, vocab, window_size=2):
 
 def get_negative_samples(vocab_size, positive_idx, k=5):
     """
-    Randomly sample 'k' negative word indices different from the positive word.
+    Randomly sample k negative word indices different from positive_idx.
     """
+    if vocab_size <= 1:
+        raise ValueError("vocab_size must be > 1 to draw negative samples.")
+
     negs = []
     while len(negs) < k:
         neg = random.randint(0, vocab_size - 1)

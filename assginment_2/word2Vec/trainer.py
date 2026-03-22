@@ -32,11 +32,12 @@ def train_skipgram(
     loss_history = []
 
     for epoch in range(epochs):
+        lr_epoch = max(lr * (1 - epoch / epochs), lr * 0.0001)  # linear decay
         total_loss = 0
         random.shuffle(pairs)
         for center, context in pairs:
             negs = get_negative_samples(len(vocab), context, k=neg_samples)
-            loss = model.forward_backward(center, context, negs, lr)
+            loss = model.forward_backward(center, context, negs, lr_epoch)
             total_loss += loss
 
         loss_history.append(total_loss / len(pairs))
