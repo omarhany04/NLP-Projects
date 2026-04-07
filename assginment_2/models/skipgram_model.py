@@ -92,6 +92,48 @@ class SkipGramNS:
         # Important: repeated negative indices should accumulate
         np.add.at(self.W_out, neg_indices, -lr * grad_out_negs)
 
+    def accumulate_gradients(self, cache):
+        """
+        Compute gradients for one training example without applying updates.
+        """
+        center_idx = cache["center_idx"]
+        context_idx = cache["context_idx"]
+        neg_indices = cache["neg_indices"]
+
+        v_c = cache["v_c"]              # (D,)
+        v_o = cache["v_o"]              # (D,)
+        v_negs = cache["v_negs"]        # (K, D)
+
+        pos_prob = cache["pos_prob"]    # scalar
+        neg_probs = cache["neg_probs"]  # (K,)
+
+        grad_pos = pos_prob - 1.0
+        grad_negs = neg_probs
+
+        grad_center = grad_pos * v_o + np.sum(grad_negs[:, None] * v_negs, axis=0)
+        grad_out_pos = grad_pos * v_c
+        grad_out_negs = grad_negs[:, None] * v_c[None, :]
+
+        return {
+            "center_idx": center_idx,
+            "context_idx": context_idx,
+            "neg_indices": neg_indices,
+            "grad_center": grad_center,
+            "grad_out_pos": grad_out_pos,
+            "grad_out_negs": grad_out_negs,
+        }
+
+    def apply_gradients(self, gradients, lr=0.05, scale=1.0):
+        """
+        Apply a list of per-example gradients. `scale` can be used to average a batch.
+        """
+        step_size = lr * scale
+
+        for grad in gradients:
+            self.W_in[grad["center_idx"]] -= step_size * grad["grad_center"]
+            self.W_out[grad["context_idx"]] -= step_size * grad["grad_out_pos"]
+            np.add.at(self.W_out, grad["neg_indices"], -step_size * grad["grad_out_negs"])
+
     def train_step(self, center_idx, context_idx, neg_indices, lr=0.05):
         """
         One full SGD step.
@@ -99,6 +141,27 @@ class SkipGramNS:
         loss, cache = self.forward(center_idx, context_idx, neg_indices)
         self.backward(cache, lr)
         return loss
+
+    def train_batch_step(self, batch_pairs, batch_neg_indices, lr=0.05, average=True):
+        """
+        One mini-batch update across many (center, context) pairs.
+        """
+        if len(batch_pairs) != len(batch_neg_indices):
+            raise ValueError("batch_pairs and batch_neg_indices must have the same length.")
+        if len(batch_pairs) == 0:
+            raise ValueError("batch_pairs is empty.")
+
+        total_loss = 0.0
+        gradients = []
+
+        for (center_idx, context_idx), neg_indices in zip(batch_pairs, batch_neg_indices):
+            loss, cache = self.forward(center_idx, context_idx, neg_indices)
+            total_loss += loss
+            gradients.append(self.accumulate_gradients(cache))
+
+        scale = 1.0 / len(batch_pairs) if average else 1.0
+        self.apply_gradients(gradients, lr=lr, scale=scale)
+        return total_loss / len(batch_pairs)
 
     def get_input_embeddings(self):
         return self.W_in
