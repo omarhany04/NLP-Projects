@@ -50,10 +50,9 @@ class FeedForward(nn.Module):
     def __init__(self,embed_dim:int,intermediate_dim : int ,dropout : float = 0.1):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(embed_dim,intermediate_dim),
+            nn.Linear(embed_dim, intermediate_dim),
             nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(intermediate_dim,embed_dim),
+            nn.Linear(intermediate_dim, embed_dim),
             nn.Dropout(dropout)
         )
 
