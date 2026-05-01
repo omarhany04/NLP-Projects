@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Part 2 generated artifacts
+assigment_3/lstm_*.png
+assigment_3/checkpoints/*lstm*.pt

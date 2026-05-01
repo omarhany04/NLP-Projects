@@ -1,0 +1,6 @@
+torch
+datasets
+transformers
+sacrebleu
+matplotlib
+numpy

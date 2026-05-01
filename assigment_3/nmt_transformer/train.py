@@ -2,13 +2,19 @@ import torch
 import torch.nn as nn
 
 
+def _non_blocking(device):
+    device = torch.device(device)
+    return device.type == "cuda"
+
+
 def train_epoch(model, loader, optimizer, criterion, device):
     model.train()
     total_loss = 0.0
+    non_blocking = _non_blocking(device)
     for src_ids, dec_input, targets in loader:
-        src_ids   = src_ids.to(device)
-        dec_input = dec_input.to(device)
-        targets   = targets.to(device)
+        src_ids   = src_ids.to(device, non_blocking=non_blocking)
+        dec_input = dec_input.to(device, non_blocking=non_blocking)
+        targets   = targets.to(device, non_blocking=non_blocking)
 
         logits, _, _, _ = model(src_ids, dec_input)   # (B, T, V)
         B, T, V = logits.shape
@@ -30,10 +36,11 @@ def train_epoch(model, loader, optimizer, criterion, device):
 def evaluate(model, loader, criterion, device):
     model.eval()
     total_loss = 0.0
+    non_blocking = _non_blocking(device)
     for src_ids, dec_input, targets in loader:
-        src_ids   = src_ids.to(device)
-        dec_input = dec_input.to(device)
-        targets   = targets.to(device)
+        src_ids   = src_ids.to(device, non_blocking=non_blocking)
+        dec_input = dec_input.to(device, non_blocking=non_blocking)
+        targets   = targets.to(device, non_blocking=non_blocking)
 
         logits, _, _, _ = model(src_ids, dec_input)
         B, T, V = logits.shape
@@ -44,7 +51,8 @@ def evaluate(model, loader, criterion, device):
 
 
 def train(model, train_loader, val_loader, optimizer, pad_id,
-          max_epochs, device, checkpoint_dir=None):
+          max_epochs, device, checkpoint_dir=None,
+          checkpoint_name="best_transformer.pt"):
     """Full training loop.  Returns (train_losses, val_losses)."""
     import os
     criterion = nn.CrossEntropyLoss(ignore_index=pad_id)
@@ -67,7 +75,7 @@ def train(model, train_loader, val_loader, optimizer, pad_id,
             os.makedirs(checkpoint_dir, exist_ok=True)
             save_checkpoint(
                 model, optimizer, epoch, val_loss,
-                os.path.join(checkpoint_dir, "best_transformer.pt"),
+                os.path.join(checkpoint_dir, checkpoint_name),
             )
 
     return train_losses, val_losses
@@ -84,7 +92,7 @@ def save_checkpoint(model, optimizer, epoch, val_loss, path):
         "optimizer_state_dict": optimizer.state_dict(),
         "val_loss":             val_loss,
     }, path)
-    print(f"  Checkpoint saved → {path}")
+    print(f"  Checkpoint saved -> {path}")
 
 
 def load_checkpoint(model, optimizer, path, device):

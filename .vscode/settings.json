@@ -1,0 +1,12 @@
+{
+  "python.analysis.extraPaths": [
+    ".",
+    "./assigment_3",
+    "./assigment_3/nmt_transformer"
+  ],
+  "python.autoComplete.extraPaths": [
+    ".",
+    "./assigment_3",
+    "./assigment_3/nmt_transformer"
+  ]
+}

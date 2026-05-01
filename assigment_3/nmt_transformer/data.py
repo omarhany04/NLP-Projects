@@ -58,7 +58,8 @@ def _collate_fn(batch, pad_id):
 
 def get_dataloaders(data_path, tokenizer_fr_path, tokenizer_en_path,
                     batch_size, max_seq_len,
-                    bos_id=1, eos_id=2, pad_id=3):
+                    bos_id=1, eos_id=2, pad_id=3,
+                    pin_memory=False, num_workers=0):
     """Return (train_loader, val_loader, test_loader, src_tokenizer, tgt_tokenizer)."""
     dataset       = load_from_disk(data_path)
     src_tokenizer = PreTrainedTokenizerFast.from_pretrained(tokenizer_fr_path)
@@ -69,7 +70,14 @@ def get_dataloaders(data_path, tokenizer_fr_path, tokenizer_en_path,
     def make_loader(split, shuffle):
         ds = NMTDataset(dataset[split], src_tokenizer, tgt_tokenizer,
                         max_seq_len, bos_id, eos_id, pad_id)
-        return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, collate_fn=collate)
+        return DataLoader(
+            ds,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            collate_fn=collate,
+            pin_memory=pin_memory,
+            num_workers=num_workers,
+        )
 
     return (
         make_loader("train",      shuffle=True),

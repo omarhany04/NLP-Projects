@@ -1,10 +1,47 @@
 import torch
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import sacrebleu
+
+
+# --------------------------------------------------------------------------- #
+# Device helpers                                                               #
+# --------------------------------------------------------------------------- #
+
+def get_device(preferred="cuda"):
+    """Return a torch.device, preferring CUDA for training when available."""
+    preferred = preferred.lower()
+    if preferred not in {"cuda", "cpu", "auto"}:
+        raise ValueError("preferred must be one of: 'cuda', 'cpu', 'auto'")
+
+    if preferred == "cpu":
+        return torch.device("cpu")
+
+    if torch.cuda.is_available():
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        return torch.device("cuda")
+
+    if preferred == "cuda":
+        raise RuntimeError(
+            "CUDA was requested, but this Python environment cannot use it. "
+            "Install a CUDA-enabled PyTorch build, then restart the notebook kernel."
+        )
+
+    return torch.device("cpu")
+
+
+def describe_device(device):
+    device = torch.device(device)
+    if device.type == "cuda":
+        name = torch.cuda.get_device_name(device)
+        memory_gb = torch.cuda.get_device_properties(device).total_memory / 1024 ** 3
+        return f"cuda - {name} ({memory_gb:.1f} GB)"
+    cuda_note = "CUDA unavailable"
+    if torch.version.cuda is None:
+        cuda_note = "CUDA unavailable; installed PyTorch is CPU-only"
+    return f"cpu ({cuda_note})"
 
 
 # --------------------------------------------------------------------------- #
@@ -24,9 +61,10 @@ def compute_bleu(hypotheses, references):
 
 def compute_bleu_dataset(model, loader_raw, src_tokenizer, tgt_tokenizer,
                          beam_size, max_len, bos_id, eos_id, pad_id, device,
-                         max_samples=None):
+                         max_samples=None, decode_fn=None):
     """Run beam search over a raw HuggingFace dataset split and compute BLEU."""
-    from inference import beam_search
+    if decode_fn is None:
+        from inference import beam_search as decode_fn
 
     hypotheses, references = [], []
     for i, sample in enumerate(loader_raw):
@@ -34,7 +72,7 @@ def compute_bleu_dataset(model, loader_raw, src_tokenizer, tgt_tokenizer,
             break
         src_text = sample["text_fr"]
         ref_text = sample["text_en"]
-        hyp, _, _ = beam_search(
+        hyp, _, _ = decode_fn(
             model, src_text, src_tokenizer, tgt_tokenizer,
             beam_size, max_len, bos_id, eos_id, pad_id, device,
         )
