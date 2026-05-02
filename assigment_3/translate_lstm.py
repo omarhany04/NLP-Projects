@@ -1,17 +1,19 @@
 """
-Live LSTM translation tester.
+LSTM translation tester — run this file to translate French sentences interactively.
 
 Usage:
-    python live_lstm_test.py
-    python live_lstm_test.py --sentence "je suis dure ."
-    python live_lstm_test.py --show_attn
+    python translate_lstm.py
+    python translate_lstm.py --sentence "je suis dure ."
+    python translate_lstm.py --show_attn
 """
 import argparse
 import os
 import sys
 
-ASSIGNMENT_DIR = os.path.dirname(__file__)
+ASSIGNMENT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, ASSIGNMENT_DIR)
 sys.path.insert(0, os.path.join(ASSIGNMENT_DIR, "nmt_transformer"))
+sys.path.insert(0, os.path.join(ASSIGNMENT_DIR, "nmt_lstm"))
 
 import torch
 import matplotlib.pyplot as plt

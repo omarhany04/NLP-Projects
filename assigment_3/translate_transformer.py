@@ -1,13 +1,15 @@
 """
-Live translation tester — run this file to translate French sentences interactively.
+Transformer translation tester — run this file to translate French sentences interactively.
 
 Usage:
-    python live_test.py
-    python live_test.py --show_attn        # also shows attention heatmap
-    python live_test.py --sentence "je suis dure ."
+    python translate_transformer.py
+    python translate_transformer.py --show_attn
+    python translate_transformer.py --sentence "je suis dure ."
 """
 import sys, os, argparse
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'nmt_transformer'))
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _ROOT)
+sys.path.insert(0, os.path.join(_ROOT, 'nmt_transformer'))
 
 import torch
 import matplotlib.pyplot as plt

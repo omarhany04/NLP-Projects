@@ -1,7 +1,31 @@
+# Python
 __pycache__/
 *.py[cod]
-.ipynb_checkpoints/
+*.pyo
 
-# Part 2 generated artifacts
-assigment_3/lstm_*.png
-assigment_3/checkpoints/*lstm*.pt
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Virtual environments
+nlpenv/
+venv/
+.venv/
+env/
+
+# Generated images
+assigment_3/*.png
+assigment_3/**/*.png
+
+# Checkpoints
+assigment_3/checkpoints/*.pt
+
+# Datasets / tokenizers (large binary files)
+resources/
+assigment_3/resources/
+
+# Editor / tool configs
+.vscode/
+.codex
+pyrightconfig.json
+assigment_3/pyrightconfig.json

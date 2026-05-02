@@ -30,7 +30,7 @@ class MultiHeadAttention(nn.Module):
     def forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor,key_padding_mask : torch.Tensor | None = None,is_causal : bool = False):
         B , tgt_len , _ = query.shape
         src_len = key.shape[1]
-        Q = self._split_heads(self.W_q(query)) # Shape: (B, H, tgt_len, dH)
+        Q = self._split_heads(self.W_q(query)) # Shape: (B, H, tgt_len, dH) # Transform then split into heads to not lose information across heads. We want each head to have access to the full embedding dimension before splitting.
         K = self._split_heads(self.W_k(key))   # Shape: (B, H, src_len, dH)
         V = self._split_heads(self.W_v(value)) # Shape: (B, H, src_len, dH)
         scores = torch.matmul(Q, K.transpose(-2, -1)) / (self.head_dim ** 0.5) # Shape: (B, H, tgt_len, src_len)
@@ -59,11 +59,11 @@ class FeedForward(nn.Module):
     def forward(self,x : torch.Tensor):
         return self.net(x) # Shape: (B, n, embed_dim)
 
-class addNorm(nn.Module):
+class addNorm(nn.Module): # Preventing loss of information across sub-layers by adding the sub-layer output back to the input (residual connection) and then normalizing. This helps with gradient flow and stabilizes training.
 
     def __init__(self,embed_dim : int):
         super().__init__()
-        self.norm = nn.LayerNorm(embed_dim)
+        self.norm = nn.LayerNorm(embed_dim) # Calculate mean and std across the embedding dimension for each token independently, then normalize and apply learnable scale and shift.
 
     def forward(self,x : torch.Tensor,sub_layer_output : torch.Tensor):
         return self.norm(x + sub_layer_output) # Shape: (B, n, embed_dim)

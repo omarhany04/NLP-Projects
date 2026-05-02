@@ -31,9 +31,9 @@ UNK_ID = 0
 SRC_VOCAB_SIZE = 3200   # French
 TGT_VOCAB_SIZE = 3200   # English
 
-# --- Paths (relative to this file's directory) ---
+# --- Paths ---
 _HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH          = os.path.join(_HERE, "../resources/parallel_en_fr_corpus")
-TOKENIZER_FR_PATH  = os.path.join(_HERE, "../resources/tokenizer_fr")
-TOKENIZER_EN_PATH  = os.path.join(_HERE, "../resources/tokenizer_en")
-CHECKPOINT_DIR     = os.path.join(_HERE, "../checkpoints")
+DATA_PATH          = os.path.join(_HERE, "resources/parallel_en_fr_corpus")
+TOKENIZER_FR_PATH  = os.path.join(_HERE, "resources/tokenizer_fr")
+TOKENIZER_EN_PATH  = os.path.join(_HERE, "resources/tokenizer_en")
+CHECKPOINT_DIR     = os.path.join(_HERE, "checkpoints")

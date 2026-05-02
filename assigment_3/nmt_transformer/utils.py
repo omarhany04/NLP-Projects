@@ -48,6 +48,11 @@ def describe_device(device):
 # BLEU                                                                          #
 # --------------------------------------------------------------------------- #
 
+def _clean(text):
+    """Strip SentencePiece ▁ boundary markers and collapse whitespace."""
+    return ' '.join(text.replace('▁', ' ').split())
+
+
 def compute_bleu(hypotheses, references):
     """
     hypotheses : list of predicted strings
@@ -76,7 +81,7 @@ def compute_bleu_dataset(model, loader_raw, src_tokenizer, tgt_tokenizer,
             model, src_text, src_tokenizer, tgt_tokenizer,
             beam_size, max_len, bos_id, eos_id, pad_id, device,
         )
-        hypotheses.append(hyp)
+        hypotheses.append(_clean(hyp))
         references.append(ref_text)
 
     return compute_bleu(hypotheses, references), hypotheses, references
