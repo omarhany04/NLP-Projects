@@ -4,9 +4,11 @@ import torch
 import torch.nn as nn
 
 
+# Part 2: replaces nn.Embedding by storing table for token IDs.
 class ManualEmbedding(nn.Module):
     """Learnable token embedding table implemented from parameters."""
 
+    # Part 2: creates the embedding table and initializes the PAD vector to zeros.
     def __init__(self, vocab_size, embed_size, padding_idx=None):
         super().__init__()
         self.padding_idx = padding_idx
@@ -16,6 +18,7 @@ class ManualEmbedding(nn.Module):
             with torch.no_grad():
                 self.weight[padding_idx].zero_()
 
+    # Part 2: converts source/target token IDs into dense vectors used by the* LSTM.
     def forward(self, token_ids):
         embeddings = self.weight[token_ids]
         if self.padding_idx is None:
@@ -24,9 +27,11 @@ class ManualEmbedding(nn.Module):
         return embeddings.masked_fill(pad_mask, 0.0)
 
 
+# Part 2: replaces nn.LSTMCell by manually computing the four LSTM gates. (LSTM Manual Implementation)
 class ManualLSTMCell(nn.Module):
     """Single LSTM cell implemented directly from the gate equations."""
 
+    # Part 2: creates the input/hidden weights for input, forget, candidate, and output gates.
     def __init__(self, input_size, hidden_size):
         super().__init__()
         self.input_size = input_size
@@ -40,6 +45,7 @@ class ManualLSTMCell(nn.Module):
         nn.init.uniform_(self.weight_ih, -bound, bound)
         nn.init.uniform_(self.weight_hh, -bound, bound)
 
+    # Part 2: performs one LSTM step and returns the new hidden and cell states.
     def forward(self, x_t, h_prev, c_prev):
         gates = x_t @ self.weight_ih + h_prev @ self.weight_hh + self.bias
         input_gate, forget_gate, candidate, output_gate = gates.chunk(4, dim=-1)
@@ -54,14 +60,20 @@ class ManualLSTMCell(nn.Module):
         return h_t, c_t
 
 
+# Part 2: runs the manual LSTM cell over a full sequence (forward or backward.)
+# One LSTM cell handles one time step.
+# But a sentence has many tokens.
+# So ManualLSTMLayer loops over the whole sequence.
 class ManualLSTMLayer(nn.Module):
     """Unidirectional LSTM layer implemented from manual cell updates."""
 
+    # Part 2: stores the hidden size and the manual recurrent cell used at each token.
     def __init__(self, input_size, hidden_size):
         super().__init__()
         self.hidden_size = hidden_size
         self.cell = ManualLSTMCell(input_size, hidden_size)
 
+    # Part 2: processes all tokens in a sentence and ignores padded positions by length.
     def forward(self, inputs, lengths=None, reverse=False, initial_state=None):
         batch_size, seq_len, _ = inputs.shape
         device = inputs.device
@@ -90,14 +102,19 @@ class ManualLSTMLayer(nn.Module):
         return outputs, (h_t, c_t)
 
 
+# Part 2: encodes the French sentence with a forward and backward manual LSTM.
+# Why bidirectional?
+# Because when encoding a French word, the model can use context from both sides.
+# For example, in a sentence, a word’s meaning may depend on words before and after it.
 class BiLSTMEncoder(nn.Module):
     """Bidirectional LSTM encoder built from manual LSTM cells.
 
     For each source position i, the encoder returns
-        h_i = [forward_h_i ; backward_h_i] in R^(2h).
+        h_i = [forward_h_i ; backward_h_i] in R^(2h).   (we concatenate both outputs: forward and backward.)
     The final forward state and final backward state initialize the decoder.
     """
 
+    # Part 2: builds forward/backward LSTM layers and the decoder-initialization.
     def __init__(self, vocab_size, embed_size, hidden_size, num_layers,
                  dropout, pad_id=3):
         super().__init__()
@@ -118,6 +135,7 @@ class BiLSTMEncoder(nn.Module):
 
         self.init_hidden = nn.Linear(2 * hidden_size, hidden_size)
 
+    # Part 2: returns encoder states h_i=[forward_i; backward_i] and the initial decoder state s_0.
     def forward(self, src_ids):
         lengths = (src_ids != self.pad_id).sum(dim=1).clamp_min(1)
         layer_input = self.dropout(self.embedding(src_ids))
@@ -139,20 +157,37 @@ class BiLSTMEncoder(nn.Module):
 
         if forward_last is None or backward_last is None:
             raise RuntimeError("BiLSTM encoder did not run any recurrent layers")
-
+        #  Decoder Initialization
+        # Take final forward encoder state.
+        # Take final backward encoder state.
+        # Concatenate them.
+        # Pass them through a linear layer.
+        # Apply tanh.
         decoder_init = torch.tanh(
             self.init_hidden(torch.cat((forward_last, backward_last), dim=-1))
         )
         return layer_input, decoder_init
 
 
+# Part 2: implements Bahdanau additive attention over all encoder hidden states.
+# Attention answers this question:
+# When generating the next English word, which French words should I look at?
+# Example: when generating "tough", the model should pay attention to "dure".
 class AdditiveAttention(nn.Module):
     """Bahdanau additive attention.
 
     e_{t,i} = v^T tanh(W s_{t-1} + U h_i)
     c_t     = sum_i alpha_{t,i} h_i
     """
+    # s_{t-1} is the previous decoder state.
+    # h_i is an encoder output for a French token.
+    # The model compares them.
+    # It produces a score.
+    # Then softmax turns scores into probabilities: alpha_{t,i} = softmax(e_{t,i}) over i.
+    # Then the context vector is: c_t = sum alpha_t,i * h_i
+    # The context vector is a weighted summary of the French sentence.
 
+    # Part 2: creates W, U, and v projections used in the additive-attention score formula.
     def __init__(self, decoder_hidden_size, encoder_output_size):
         super().__init__()
         self.decoder_proj = nn.Linear(decoder_hidden_size, decoder_hidden_size,
@@ -161,6 +196,7 @@ class AdditiveAttention(nn.Module):
                                       bias=False)
         self.energy = nn.Linear(decoder_hidden_size, 1, bias=False)
 
+    # Part 2: computes attention weights alpha_t,i and the context vector c_t for one decoder step.
     def forward(self, decoder_state, encoder_outputs, src_key_padding_mask=None):
         dec = self.decoder_proj(decoder_state).unsqueeze(1)
         enc = self.encoder_proj(encoder_outputs)
@@ -174,10 +210,14 @@ class AdditiveAttention(nn.Module):
         context = torch.bmm(attn_weights.unsqueeze(1), encoder_outputs).squeeze(1)
         return context, attn_weights
 
-
+# Part 2: LSTM Decoder
+# The decoder generates English one token at a time.
+# At each step, it receives: previous English token + attention context 
+# Then it predicts the next English token and updates its hidden state.
 class AttentiveLSTMDecoder(nn.Module):
     """Unidirectional LSTM decoder built from manual LSTM cells."""
 
+    # Part 2: builds target embeddings, attention, decoder LSTM cells, and vocabulary output layer.
     def __init__(self, vocab_size, embed_size, hidden_size, num_layers,
                  dropout, pad_id=3):
         super().__init__()
@@ -199,11 +239,14 @@ class AttentiveLSTMDecoder(nn.Module):
         self.output = nn.Linear(embed_size + hidden_size + 2 * hidden_size,
                                 vocab_size)
 
+    # Part 2: converts the encoder summary into the decoder's initial cell tensors.
     def init_state(self, decoder_init):
         hidden = decoder_init.unsqueeze(0).repeat(self.num_layers, 1, 1)
         cell = torch.zeros_like(hidden)
         return hidden, cell
 
+    # Part 2: predicts the next English-token from y_{t-1}, previous state, and attention context.
+    # The final prediction uses: decoder state + context vector + previous token embedding
     def forward_step(self, input_ids, state, encoder_outputs,
                      src_key_padding_mask=None):
         hidden, cell = state
@@ -228,9 +271,15 @@ class AttentiveLSTMDecoder(nn.Module):
         return logits, next_state, attn_weights
 
 
+# Part 2: wraps the full recurrent translation model: BiLSTM encoder + LSTM decoder.
+# 1. Encode French sentence
+# 2. Initialize decoder
+# 3. Decode English tokens one by one
+# 4. Return logits and attention weights (logits: means raw scores before softmax.)
 class RecurrentNMT(nn.Module):
     """BiLSTM encoder + unidirectional LSTM decoder with additive attention."""
 
+    # Part 2: connects the French encoder and English decoder with the assignment hyperparameters.
     def __init__(self, src_vocab_size, tgt_vocab_size, embed_size=256,
                  hidden_size=512, num_layers=1, dropout=0.3, pad_id=3):
         super().__init__()
@@ -242,17 +291,20 @@ class RecurrentNMT(nn.Module):
             tgt_vocab_size, embed_size, hidden_size, num_layers, dropout, pad_id
         )
 
+    # Part 2: encodes a batch of French source sentences once before decoding.
     def encode(self, src_ids):
         src_pad_mask = (src_ids == self.pad_id)
         encoder_outputs, decoder_init = self.encoder(src_ids)
         decoder_state = self.decoder.init_state(decoder_init)
         return encoder_outputs, decoder_state, src_pad_mask
 
+    # Part 2: runs one decoder step during greedy decoding or beam search.
     def decode_step(self, input_ids, state, encoder_outputs, src_pad_mask=None):
         return self.decoder.forward_step(
             input_ids, state, encoder_outputs, src_pad_mask
         )
 
+    # Part 2: trains with teacher forcing by feeding the whole shifted target sentence to the decoder.
     def forward(self, src_ids, tgt_ids):
         """Teacher-forced decoding.
 

@@ -6,6 +6,7 @@ from transformers import PreTrainedTokenizerFast
 from datasets import load_from_disk
 
 
+# Part 2 data: stores French-English pairs and prepares encoder/decoder training examples.
 class NMTDataset(Dataset):
     """Parallel French→English dataset.
 
@@ -16,6 +17,7 @@ class NMTDataset(Dataset):
     Decoder input and target are always the same length, shifted by 1.
     """
 
+    # Part 2 data: keeps the dataset, tokenizers, max length, and special token IDs.
     def __init__(self, data, src_tokenizer, tgt_tokenizer,
                  max_seq_len, bos_id, eos_id, pad_id):
         self.data          = data
@@ -26,9 +28,11 @@ class NMTDataset(Dataset):
         self.eos_id        = eos_id
         self.pad_id        = pad_id
 
+    # Part 2 data: returns the number of parallel sentence pairs in this split.
     def __len__(self):
         return len(self.data)
 
+    # Part 2 data: tokenizes one French-English pair into source IDs, decoder input, and target labels.
     def __getitem__(self, idx):
         src_text = self.data[idx]["text_fr"]   # French  → encoder
         tgt_text = self.data[idx]["text_en"]   # English → decoder
@@ -48,6 +52,7 @@ class NMTDataset(Dataset):
         return src_ids, dec_input, target
 
 
+# Part 2 data: pads variable-length sentences in a batch with PAD_ID so tensors have equal length.
 def _collate_fn(batch, pad_id):
     src_ids, dec_inputs, targets = zip(*batch)
     src_ids    = pad_sequence(src_ids,    batch_first=True, padding_value=pad_id)
@@ -56,6 +61,7 @@ def _collate_fn(batch, pad_id):
     return src_ids, dec_inputs, targets
 
 
+# Part 2 data: loads tokenizers/dataset splits and returns DataLoaders for train, validation, and test.
 def get_dataloaders(data_path, tokenizer_fr_path, tokenizer_en_path,
                     batch_size, max_seq_len,
                     bos_id=1, eos_id=2, pad_id=3,
@@ -67,6 +73,7 @@ def get_dataloaders(data_path, tokenizer_fr_path, tokenizer_en_path,
 
     collate = partial(_collate_fn, pad_id=pad_id)
 
+    # Part 2 data: creates one DataLoader for a specific split with the shared padding function.
     def make_loader(split, shuffle):
         ds = NMTDataset(dataset[split], src_tokenizer, tgt_tokenizer,
                         max_seq_len, bos_id, eos_id, pad_id)

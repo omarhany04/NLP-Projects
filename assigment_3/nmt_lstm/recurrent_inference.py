@@ -1,6 +1,11 @@
+
+# Here we use the trained model to generate translations
+# It answers the question: After the model is trained, how do we actually translate a French sentence?
 import torch
 
 
+# This takes a French sentence and turns it into token IDs, Then it creates a PyTorch tensor and sends it to GPU.
+# Needed: Because the model does not read raw text. It reads token IDs.
 def _prepare_source(src_text, src_tokenizer, max_len, eos_id, device):
     src_ids = src_tokenizer.encode(src_text, add_special_tokens=False)
     src_ids = src_ids[: max_len - 1] + [eos_id]
@@ -8,6 +13,9 @@ def _prepare_source(src_text, src_tokenizer, max_len, eos_id, device):
     return src_ids, src_tensor
 
 
+# This cleans the generated English token IDs.  
+# During generation, output may look like:  [BOS, i, m, tough, EOS] 
+# This function removes special tokens: BOS, EOS and anything after EOS
 def _finish_tokens(tokens, bos_id, eos_id):
     if tokens and tokens[0] == bos_id:
         tokens = tokens[1:]
@@ -16,6 +24,8 @@ def _finish_tokens(tokens, bos_id, eos_id):
     return tokens
 
 
+# During decoding, every generated word has an attention vector over the French sentence.
+# This function stacks all those attention vectors into tensor shaped like a heatmap that will be ploted in the notebook.
 def _stack_attention(attention_steps, keep_len):
     if keep_len == 0 or not attention_steps:
         return None
@@ -24,6 +34,9 @@ def _stack_attention(attention_steps, keep_len):
 
 
 @torch.no_grad()
+# Greedy decoding means: generating a translation by always choosing the highest-probability next token. (use argmax)
+# Stops when it predicts EOS.
+# Disadvantages: it never reconsiders earlier choices.
 def lstm_greedy_decode(model, src_text, src_tokenizer, tgt_tokenizer,
                        max_len, bos_id, eos_id, pad_id, device):
     """Greedy decoding for the recurrent NMT model."""
@@ -52,6 +65,15 @@ def lstm_greedy_decode(model, src_text, src_tokenizer, tgt_tokenizer,
 
 
 @torch.no_grad()
+# Beam search is smarter than greedy decoding.
+# Instead of keeping only one translation, it keeps several possible translations.
+# If:  beam_size = 4, then it keeps the best 4 partial translations at every step.
+# Then it expands each one and keeps the best again.
+# The function stores each beam as: (score, tokens, state, attention_steps)
+# score: total log probability so far.
+# tokens: generated English tokens.
+# state: decoder hidden/cell state.
+# attention_steps: attention weights for visualization.
 def lstm_beam_search(model, src_text, src_tokenizer, tgt_tokenizer,
                      beam_size, max_len, bos_id, eos_id, pad_id, device,
                      length_penalty=0.6):
@@ -128,6 +150,8 @@ def lstm_beam_search(model, src_text, src_tokenizer, tgt_tokenizer,
 
 
 @torch.no_grad()
+# This translates a list of French sentences by calling beam search on each one.
+# It is useful for BLEU evaluation because BLEU needs many generated translations.
 def lstm_translate_batch(model, src_texts, src_tokenizer, tgt_tokenizer,
                          beam_size, max_len, bos_id, eos_id, pad_id, device):
     """Translate a list of French sentences with LSTM beam search."""

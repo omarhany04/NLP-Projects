@@ -1,11 +1,4 @@
-"""
-LSTM translation tester — run this file to translate French sentences interactively.
-
-Usage:
-    python translate_lstm.py
-    python translate_lstm.py --sentence "je suis dure ."
-    python translate_lstm.py --show_attn
-"""
+# This file is for live testing from the terminal.
 import argparse
 import os
 import sys
@@ -26,10 +19,12 @@ from train import load_checkpoint
 from utils import describe_device, get_device, ids_to_tokens, plot_attention
 
 
+# Part 2 live test: cleans tokenizer boundary markers so the printed English sentence is readable.
 def clean(text):
     return " ".join(text.replace("\u2581", " ").split())
 
 
+# Part 2 live test: rebuilds the LSTM model, loads the saved checkpoint, and returns tokenizers.
 def load_model(device, checkpoint_path):
     src_tokenizer = PreTrainedTokenizerFast.from_pretrained(TOKENIZER_FR_PATH)
     tgt_tokenizer = PreTrainedTokenizerFast.from_pretrained(TOKENIZER_EN_PATH)
@@ -54,6 +49,7 @@ def load_model(device, checkpoint_path):
     return model, src_tokenizer, tgt_tokenizer
 
 
+# Part 2 live test: translates one French sentence and optionally displays its attention heatmap.
 def translate(sentence, model, src_tokenizer, tgt_tokenizer, device,
               beam_size=4, show_attn=False):
     translation, pred_tokens, attn = lstm_beam_search(
@@ -79,6 +75,7 @@ def translate(sentence, model, src_tokenizer, tgt_tokenizer, device,
     return translation
 
 
+# Part 2 live test: repeatedly accepts French input from the terminal until the user quits.
 def interactive_loop(model, src_tokenizer, tgt_tokenizer, device, show_attn,
                      beam_size):
     print("\nLSTM NMT - French -> English")

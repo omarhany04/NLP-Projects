@@ -9,6 +9,7 @@ import sacrebleu
 # Device helpers                                                               #
 # --------------------------------------------------------------------------- #
 
+# Part 2 utilities: chooses GPU when available so LSTM training can run faster.
 def get_device(preferred="cuda"):
     """Return a torch.device, preferring CUDA for training when available."""
     preferred = preferred.lower()
@@ -32,6 +33,7 @@ def get_device(preferred="cuda"):
     return torch.device("cpu")
 
 
+# Part 2 utilities: prints a friendly CPU/GPU description for the notebook and live tester.
 def describe_device(device):
     device = torch.device(device)
     if device.type == "cuda":
@@ -48,11 +50,13 @@ def describe_device(device):
 # BLEU                                                                          #
 # --------------------------------------------------------------------------- #
 
+# Part 2 BLEU: removes tokenizer boundary markers before comparing translations.
 def _clean(text):
     """Strip SentencePiece ▁ boundary markers and collapse whitespace."""
     return ' '.join(text.replace('▁', ' ').split())
 
 
+# Part 2 BLEU: computes corpus BLEU between model translations and references.
 def compute_bleu(hypotheses, references):
     """
     hypotheses : list of predicted strings
@@ -64,6 +68,7 @@ def compute_bleu(hypotheses, references):
     return result
 
 
+# Part 2 BLEU: translates the test split with beam search and computes the final BLEU score.
 def compute_bleu_dataset(model, loader_raw, src_tokenizer, tgt_tokenizer,
                          beam_size, max_len, bos_id, eos_id, pad_id, device,
                          max_samples=None, decode_fn=None):
@@ -91,6 +96,7 @@ def compute_bleu_dataset(model, loader_raw, src_tokenizer, tgt_tokenizer,
 # Attention Visualization                                                       #
 # --------------------------------------------------------------------------- #
 
+# Part 2 visualization: draws the additive-attention weights for one attention head.
 def plot_attention(attn_weights, src_tokens, tgt_tokens,
                    title="Attention", head=0, figsize=(8, 6)):
     """
@@ -119,6 +125,7 @@ def plot_attention(attn_weights, src_tokens, tgt_tokens,
     return fig
 
 
+# Part 2 visualization: draws every attention head when a model returns multi-head weights.
 def plot_all_heads(attn_weights, src_tokens, tgt_tokens,
                    title="Attention", figsize=None):
     """Plot all attention heads in a single figure."""
@@ -150,6 +157,7 @@ def plot_all_heads(attn_weights, src_tokens, tgt_tokens,
     return fig
 
 
+# Part 2 visualization: plots training and validation loss to show learning/overfitting.
 def plot_loss_curves(train_losses, val_losses):
     fig, ax = plt.subplots()
     epochs = range(1, len(train_losses) + 1)
@@ -167,6 +175,7 @@ def plot_loss_curves(train_losses, val_losses):
 # Token helpers                                                                 #
 # --------------------------------------------------------------------------- #
 
+# Part 2 visualization: converts token IDs back to readable labels for attention plots.
 def ids_to_tokens(ids, tokenizer):
     """Convert a list/tensor of token IDs to a list of string tokens."""
     if isinstance(ids, torch.Tensor):

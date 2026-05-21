@@ -2,11 +2,13 @@ import torch
 import torch.nn as nn
 
 
+# Part 2 training: enables faster non-blocking tensor transfers only when running on CUDA.
 def _non_blocking(device):
     device = torch.device(device)
     return device.type == "cuda"
 
 
+# Part 2 training: runs one full training epoch and updates the LSTM model weights.
 def train_epoch(model, loader, optimizer, criterion, device):
     model.train()
     total_loss = 0.0
@@ -33,6 +35,7 @@ def train_epoch(model, loader, optimizer, criterion, device):
 
 
 @torch.no_grad()
+# Part 2 training: computes validation/test loss without changing the model weights.
 def evaluate(model, loader, criterion, device):
     model.eval()
     total_loss = 0.0
@@ -50,6 +53,7 @@ def evaluate(model, loader, criterion, device):
     return total_loss / len(loader)
 
 
+# Part 2 training: manages epochs, validation, best-checkpoint saving, and loss history.
 def train(model, train_loader, val_loader, optimizer, pad_id,
           max_epochs, device, checkpoint_dir=None,
           checkpoint_name="best_transformer.pt"):
@@ -85,6 +89,7 @@ def train(model, train_loader, val_loader, optimizer, pad_id,
 # Checkpoint helpers                                                            #
 # --------------------------------------------------------------------------- #
 
+# Part 2 checkpointing: saves model weights, optimizer state, epoch, and validation loss.
 def save_checkpoint(model, optimizer, epoch, val_loss, path):
     torch.save({
         "epoch":                epoch,
@@ -95,6 +100,7 @@ def save_checkpoint(model, optimizer, epoch, val_loss, path):
     print(f"  Checkpoint saved -> {path}")
 
 
+# Part 2 checkpointing: restores a saved model so inference/BLEU use the best validation epoch.
 def load_checkpoint(model, optimizer, path, device):
     checkpoint = torch.load(path, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
